@@ -31,7 +31,7 @@ def send_welcome(message):
             markup.add(instruction_button)
             bot.send_message(message.chat.id, "Нажмите кнопку 'Инструкция' для получения инструкции по распространению.", reply_markup=markup)
         else:
-            bot.send_message(message.chat.id, "Вы должны быть подписаны на канал SHADOW RATS для получения доступа.", parse_mode='Markdown')
+            bot.send_message(message.chat.id, "Вы должны быть подписаны на канал [SHADOW RATS] (https://t.me/+7U6yF05xjpljODJi) для получения доступа.", parse_mode='Markdown')
     except Exception as e:
         bot.send_message(message.chat.id, "Произошла ошибка при проверке подписки.")
 
