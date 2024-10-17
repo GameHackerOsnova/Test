@@ -6,11 +6,11 @@ import threading
 
 def get_wifi_networks():
     # Запускаем команду для сканирования доступных Wi-Fi сетей
-    result = subprocess.run(['nmcli', 'dev', 'wifi'], capture_output=True, text=True)
+    result = subprocess.run(['iwlist', 'scan'], capture_output=True, text=True)
     output = result.stdout
     
     # Используем регулярные выражения для извлечения SSID сетей
-    networks = re.findall(r'\s*([^\s]+)\s+([^\s]+)\s+([^\s]+)', output)
+    networks = re.findall(r'ESSID:"([^"]+)"', output)
     
     return networks
 
@@ -57,10 +57,10 @@ def main():
     networks = get_wifi_networks()
     print("Доступные Wi-Fi сети:")
     for i, network in enumerate(networks):
-        print(f"{i + 1}. {network[0]}")
+        print(f"{i + 1}. {network}")
     
     choice = int(input("Выберите сеть для взлома (номер): ")) - 1
-    ssid = networks[choice][0]
+    ssid = networks[choice]
     
     print(f"Начинаем взлом сети {ssid}...")
     crack_wifi_password(ssid)
