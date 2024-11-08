@@ -24,10 +24,19 @@ def is_banned(user_id):
             return str(user_id) in banned_ids
     return False
 
+# Функция для сохранения ID и username пользователя
+def save_user_info(user_id, username):
+    with open('users.txt', 'a') as file:
+        file.write(f"{user_id}:{username}\n")
+
 # Обработка команды /start
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.from_user.id
+    username = message.from_user.username or message.from_user.first_name
+    
+    # Сохранение информации о пользователе
+    save_user_info(user_id, username)
     
     # Проверка подписки на канал
     try:
@@ -59,6 +68,10 @@ def send_subscription_buttons(chat_id):
 @bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
 def check_subscription(call):
     user_id = call.from_user.id
+    username = call.from_user.username or call.from_user.first_name
+    
+    # Сохранение информации о пользователе
+    save_user_info(user_id, username)
     
     try:
         member = bot.get_chat_member(CHANNEL_ID, user_id)
@@ -80,6 +93,12 @@ def check_subscription(call):
 # Обработка команды "Инструкция"
 @bot.message_handler(func=lambda message: message.text == "Инструкция")
 def send_instruction(message):
+    user_id = message.from_user.id
+    username = message.from_user.username or message.from_user.first_name
+    
+    # Сохранение информации о пользователе
+    save_user_info(user_id, username)
+    
     instruction = (
         "Инструкция по распространению:\n\n"
         "1. YouTube:\n"
@@ -101,10 +120,14 @@ def send_instruction(message):
     )
     bot.send_message(message.chat.id, instruction)
 
-# Обработка всех текстовых сообщений
-@bot.message_handler(func=lambda message: True)
-def handle_message(message):
+# Обработка команды /help
+@bot.message_handler(commands=['help'])
+def handle_help(message):
     user_id = message.from_user.id
+    username = message.from_user.username or message.from_user.first_name
+    
+    # Сохранение информации о пользователе
+    save_user_info(user_id, username)
     
     # Проверка, забанен ли пользователь
     if is_banned(user_id):
