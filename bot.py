@@ -29,6 +29,11 @@ def save_user_info(user_id, username):
     with open('users.txt', 'a') as file:
         file.write(f"{user_id}:{username}\n")
 
+# Функция для сохранения описания сайта
+def save_site_description(user_id, description):
+    with open('site_descriptions.txt', 'a') as file:
+        file.write(f"{user_id}:\n{description}\n\n")
+
 # Обработка команды /start
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -137,9 +142,7 @@ def handle_help(message):
     if is_banned(user_id):
         return
     
-    # Пересылка сообщения администратору
-    bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
-    bot.send_message(message.chat.id, "Ваше сообщение отправлено в техподдержку. Ожидайте ответа.")
+    bot.send_message(message.chat.id, "Задавайте вопрос, он будет направлен в техподдержку.")
 
 # Обработка команды "Создание сайта"
 @bot.message_handler(func=lambda message: message.text == "Создание сайта")
@@ -162,13 +165,27 @@ def handle_create_site(message):
     )
     bot.send_message(message.chat.id, site_description)
 
+# Обработка описания сайта
+@bot.message_handler(func=lambda message: message.reply_to_message is not None and message.reply_to_message.text == "Опишите, для чего нужен сайт, и подробно опишите, что должно быть на сайте.")
+def handle_site_description(message):
+    user_id = message.from_user.id
+    username = message.from_user.username or message.from_user.first_name
+    
+    # Сохранение информации о пользователе
+    save_user_info(user_id, username)
+    
+    # Сохранение описания сайта
+    save_site_description(user_id, message.text)
+    
+    bot.send_message(message.chat.id, "Ваше описание сайта отправлено нашему web разработчику. Ожидайте ответа.")
+
 # Обработка ответа администратора
 @bot.message_handler(func=lambda message: message.reply_to_message is not None and message.from_user.id == int(ADMIN_ID))
 def handle_admin_reply(message):
     original_message = message.reply_to_message
     user_id = original_message.forward_from.id
     
-    # Отправка анонимного ответа пользователю
+    # Отправка ответа пользователю
     bot.send_message(user_id, message.text)
 
 # Запуск бота
