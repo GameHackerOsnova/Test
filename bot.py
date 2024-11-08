@@ -1,6 +1,6 @@
 import os
 import telebot
-from telebot import types
+from telebot import types, apihelper
 
 # Замените на ваш токен бота
 API_TOKEN = '7138095299:AAH3YEgptfE-Me22NR6jpeZJZWiihXfbWPY'
@@ -15,6 +15,14 @@ RAT_FILE_PATH = 'RAT.exe'
 ADMIN_ID = '1258446750'
 
 bot = telebot.TeleBot(API_TOKEN)
+
+# Состояния
+STATE_NONE = 0
+STATE_WAITING_FOR_HELP = 1
+STATE_WAITING_FOR_SITE_DESCRIPTION = 2
+
+# Словарь для хранения состояний пользователей
+user_states = {}
 
 # Функция для проверки, забанен ли пользователь
 def is_banned(user_id):
@@ -143,6 +151,7 @@ def handle_help(message):
         return
     
     bot.send_message(message.chat.id, "Задавайте вопрос, он будет направлен в техподдержку.")
+    user_states[user_id] = STATE_WAITING_FOR_HELP
 
 # Обработка команды "Создание сайта"
 @bot.message_handler(func=lambda message: message.text == "Создание сайта")
@@ -164,20 +173,32 @@ def handle_create_site(message):
         "время ожидания ответа от 5 минут до 48 часов. Цена будет договорная."
     )
     bot.send_message(message.chat.id, site_description)
+    user_states[user_id] = STATE_WAITING_FOR_SITE_DESCRIPTION
 
-# Обработка описания сайта
-@bot.message_handler(func=lambda message: message.reply_to_message is not None and message.reply_to_message.text == "Опишите, для чего нужен сайт, и подробно опишите, что должно быть на сайте.")
-def handle_site_description(message):
+# Обработка сообщений пользователя
+@bot.message_handler(func=lambda message: True)
+def handle_user_message(message):
     user_id = message.from_user.id
     username = message.from_user.username or message.from_user.first_name
     
     # Сохранение информации о пользователе
     save_user_info(user_id, username)
     
-    # Сохранение описания сайта
-    save_site_description(user_id, message.text)
+    # Проверка, забанен ли пользователь
+    if is_banned(user_id):
+        return
     
-    bot.send_message(message.chat.id, "Ваше описание сайта отправлено нашему web разработчику. Ожидайте ответа.")
+    if user_id in user_states:
+        if user_states[user_id] == STATE_WAITING_FOR_HELP:
+            # Пересылка сообщения администратору
+            bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
+            bot.send_message(message.chat.id, "Ваше сообщение отправлено в техподдержку. Ожидайте ответа.")
+            user_states[user_id] = STATE_NONE
+        elif user_states[user_id] == STATE_WAITING_FOR_SITE_DESCRIPTION:
+            # Сохранение описания сайта
+            save_site_description(user_id, message.text)
+            bot.send_message(message.chat.id, "Ваше описание сайта отправлено нашему web разработчику. Ожидайте ответа.")
+            user_states[user_id] = STATE_NONE
 
 # Обработка ответа администратора
 @bot.message_handler(func=lambda message: message.reply_to_message is not None and message.from_user.id == int(ADMIN_ID))
